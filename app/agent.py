@@ -36,29 +36,37 @@ def load_prompt(**kwargs: object) -> str:
     return template.render(today=date.today().isoformat(), **kwargs)
 
 
-def build_agent() -> Agent:
+def build_research_agent() -> Agent:
+    return Agent(
+        model=GeminiInteractions(
+            agent="deep-research-preview-04-2026",
+            api_key=API_KEY,
+        ),
+        markdown=True,
+    )
+
+
+def build_deduplication_agent() -> Agent:
     return Agent(
         model=GeminiInteractions(
             id=MODEL_NAME,
             api_key=API_KEY,
-            search=True,
         ),
-        instructions=load_prompt(),
+        instructions=(
+            "Deduplicate hackathon events from the research report and format them. "
+            "Merge the same event listed more than once. Do not invent events."
+        ),
         output_schema=HackathonBrief,
         markdown=False,
     )
 
 
 def run() -> HackathonBrief | str:
-    agent = build_agent()
-    response = agent.run("Find current and upcoming hackathons in Belgium.")
+    research = build_research_agent().run(load_prompt())
+    response = build_deduplication_agent().run(research.content)
     return response.content
 
 
-def main() -> None:
+if __name__ == "__main__":
     result = run()
     print(result)
-
-
-if __name__ == "__main__":
-    main()
