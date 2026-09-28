@@ -25,7 +25,10 @@ class HackathonEvent(BaseModel):
     city: str = Field(description="Belgian city where it takes place")
     date: str = Field(description="Required ISO date (YYYY-MM-DD) of the hackathon event")
     topic: str = Field(description="Single short topic label (e.g. AI, climate, health)")
-    url: str = Field(default=None, description="Official hackathon event URL or most relevant url for more information regarding the hackathon")
+    url: str | None = Field(
+        default=None,
+        description="Direct URL of this specific hackathon. Not a search, category, or city listing. Eventbrite only if the path is /e/...",
+    )
     description: str = Field(description="Short description of the hackathon topic")
 
 
@@ -35,7 +38,11 @@ class HackathonBrief(BaseModel):
 
 def load_prompt(template: str, **kwargs: object) -> str:
     env = Environment(loader=FileSystemLoader(APP_DIR), autoescape=False)
-    return env.get_template(template).render(today=date.today().isoformat(), **kwargs)
+    defaults = {
+        "today": date.today().isoformat(),
+        "event_schema": json.dumps(HackathonEvent.model_json_schema(), indent=2),
+    }
+    return env.get_template(template).render(**defaults, **kwargs)
 
 
 def build_research_agent() -> Agent:
@@ -54,10 +61,7 @@ def build_compiler_agent() -> Agent:
             id=MODEL_NAME,
             api_key=API_KEY,
         ),
-        instructions=load_prompt(
-            "compiler.jinja2",
-            event_schema=json.dumps(HackathonEvent.model_json_schema(), indent=2),
-        ),
+        instructions=load_prompt("compiler.jinja2"),
         output_schema=HackathonBrief,
         markdown=False,
     )

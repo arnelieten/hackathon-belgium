@@ -4,8 +4,10 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 import threading
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -28,6 +30,136 @@ CREATE TABLE IF NOT EXISTS hackathons (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 """
+
+
+def is_valid_url(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    url = value.strip().lower()
+    return url.startswith("https://") or url.startswith("http://")
+
+
+def is_direct_event_url(value: object) -> bool:
+    """True for a page about one event. Eventbrite directory and search URLs are not."""
+    if not is_valid_url(value):
+        return False
+    parsed = urlparse(str(value).strip())
+    host = parsed.netloc.lower().removeprefix("www.")
+    if "eventbrite." in host:
+        parts = [part for part in parsed.path.lower().split("/") if part]
+        return len(parts) >= 2 and parts[0] == "e"
+    return True
+
+
+_TITLE_NOISE = re.compile(
+    r"\b(grand final|grande finale|final|finale|qualifier|qualification)\b",
+    re.IGNORECASE,
+)
+
+
+def core_event_name(name: str) -> str:
+    """Name used to spot the same hackathon with a city or subtitle added."""
+    text = name.lower().replace("\u2013", "-").replace("\u2014", "-")
+    text = re.sub(r"\([^)]*\)", " ", text)
+    text = re.sub(r"\b20\d{2}\b", " ", text)
+    parts = [part.strip(" .") for part in text.split("-")]
+    head = parts[0] if parts else text
+    if len(parts) > 1 and len(head.split()) >= 2:
+        text = head
+    text = _TITLE_NOISE.sub(" ", text)
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _url_rank(url: str) -> tuple[int, int]:
+    host = urlparse(url).netloc.lower()
+    aggregator = int(
+        any(
+            token in host
+            for token in ("eventbrite.", "lu.ma", "luma.com", "devpost.com", "meetup.com")
+        )
+    )
+    return (aggregator, len(url))
+
+
+def _coerce_event(event) -> dict | None:
+    if isinstance(event, dict) and "name" in event and "date" in event:
+        name = str(event.get("name") or "").strip()
+        event_date = str(event.get("date") or "").strip()
+        if not name or not event_date:
+            return None
+        url = event.get("url")
+        return {
+            "name": name,
+            "city": str(event.get("city") or "").strip(),
+            "date": event_date,
+            "topic": _normalize_topic(event.get("topic", event.get("topics"))),
+            "url": url if is_direct_event_url(url) else None,
+            "description": str(event.get("description") or ""),
+        }
+
+    row = _event_fields(event)
+    if row is None:
+        return None
+    _uid, name, city, event_date, topic, url, description = row
+    return {
+        "name": name,
+        "city": city,
+        "date": event_date,
+        "topic": topic,
+        "url": url if is_direct_event_url(url) else None,
+        "description": description,
+    }
+
+
+def _merge_group(items: list[dict]) -> dict:
+    primary = min(items, key=lambda item: (len(item["name"]), item["name"]))
+    cities: list[str] = []
+    for item in items:
+        city = item["city"].strip()
+        if not city:
+            continue
+        if city.lower().startswith("multiple"):
+            cities = ["Multiple"]
+            break
+        if city not in cities:
+            cities.append(city)
+    if len(cities) > 1:
+        city = "Multiple"
+    elif cities:
+        city = cities[0]
+    else:
+        city = ""
+
+    urls = [item["url"] for item in items if item.get("url")]
+    topics = [item["topic"] for item in items if item.get("topic")]
+    description = max((item["description"] for item in items), key=len, default="")
+    return {
+        "name": primary["name"],
+        "city": city,
+        "date": primary["date"],
+        "topic": primary["topic"] or (topics[0] if topics else ""),
+        "url": min(urls, key=_url_rank) if urls else None,
+        "description": description,
+    }
+
+
+def dedupe_events(events) -> list[dict]:
+    """Collapse same-day city splits and subtitle variants into one event."""
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    order: list[tuple[str, str]] = []
+    for event in events:
+        item = _coerce_event(event)
+        if item is None:
+            continue
+        core = core_event_name(item["name"]) or re.sub(
+            r"[^a-z0-9]+", " ", item["name"].lower()
+        ).strip()
+        key = (core, item["date"])
+        if key not in grouped:
+            order.append(key)
+            grouped[key] = []
+        grouped[key].append(item)
+    return [_merge_group(grouped[key]) for key in order]
 
 
 def hackathon_uid(name: str, event_date: str) -> str:
@@ -134,7 +266,7 @@ def _event_fields(event) -> tuple | None:
         (city or "").strip(),
         event_date,
         _normalize_topic(topic),
-        url or None,
+        url if is_direct_event_url(url) else None,
         description or "",
     )
 
@@ -142,7 +274,7 @@ def _event_fields(event) -> tuple | None:
 def save_hackathons(db_connection, events) -> int:
     """Upsert hackathons by uid (hash of name + date). Returns count saved."""
     count = 0
-    for event in events:
+    for event in dedupe_events(events):
         row = _event_fields(event)
         if row is None:
             continue
@@ -172,6 +304,9 @@ def fetch_hackathons(
 
     if not include_past:
         conditions.append("date >= date('now')")
+    conditions.append(
+        "url IS NOT NULL AND (url LIKE 'http://%' OR url LIKE 'https://%')"
+    )
     if city:
         conditions.append("city = ?")
         params.append(city)
@@ -181,7 +316,7 @@ def fetch_hackathons(
                 FROM hackathons {where}
                 ORDER BY date ASC"""
     rows = get_query(db_connection, query, tuple(params) if params else None)
-    return [
+    events = [
         {
             "name": row[0] or "",
             "city": row[1] or "",
@@ -191,7 +326,9 @@ def fetch_hackathons(
             "description": row[5] or "",
         }
         for row in rows
+        if is_direct_event_url(row[4])
     ]
+    return dedupe_events(events)
 
 
 def fetch_cities(db_connection) -> list[str]:

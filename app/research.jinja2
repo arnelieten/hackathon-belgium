@@ -4,7 +4,15 @@ Today is {{ today }}.
 
 Look for student, university, and industry hackathons in Belgian cities (Brussels, Ghent, Antwerp, Leuven, Liège, and others). Prefer official event pages, universities, and well-known platforms.
 
-Collect for each event: name, city, start/end dates, official URL, a short description, and one topic.
+Collect every field in this schema for each event:
+{{ event_schema }}
+
+Report each hackathon once. A multi-city event on the same date is one hackathon: list the cities in that single entry, do not open a separate entry per city. A later final on a different date is a separate entry. If two write-ups share a name, organizer, and date, and one only adds a city or a subtitle, they are the same event.
+
+For every event, find a direct http:// or https:// URL that opens that specific hackathon. Prefer the official event page. A single-event page on Luma, Devpost, or Eventbrite is acceptable. Quote the URL in the brief. Do not invent URLs.
+
+Do not use a search, category, city, or "hackathons" directory page. Eventbrite only counts when the path is an event page under /e/. Directory paths such as /d/ or /b/ are not event links. If you cannot find a direct page, say that no direct URL was found. Do not substitute a listing page.
+
 Skip events that are not in Belgium.
-Do not invent events, dates, or URLs. If a field is unknown, say so.
+Do not invent events, dates, or URLs.
 Return a readable research brief.

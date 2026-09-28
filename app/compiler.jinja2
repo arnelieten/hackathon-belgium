@@ -2,8 +2,16 @@ Deduplicate hackathon events from the research report and format them.
 
 Today is {{ today }}.
 
-Merge the same event if it is listed more than once.
-Do not invent events, dates, URLs, or a topic. If a field is unknown, follow the schema.
+Keep one record when any of these are true:
+- The same hackathon is listed more than once.
+- The names match except for a city or a subtitle, and the date is the same. "Tectonic Hackathon - Ghent" is the same event as "Tectonic Hackathon". "Hack the Future 2026 - The Curse of Achrona" is the same event as "Hack the Future 2026".
+- One hackathon runs in several cities on the same date. Keep a single record, set city to "Multiple", and name the cities in the description.
+
+A final held on a different date stays one separate record. Do not also keep one card per qualifier city.
+
+Use the shortest clear event name. Do not invent events, dates, URLs, or a topic. If a field is unknown, follow the schema.
+
+Keep a URL only when it opens that specific event. Drop Eventbrite search, category, and city pages (any Eventbrite URL whose path is not under /e/). If the only URL is a listing page, leave url empty.
 
 Fill each event using this JSON schema:
 {{ event_schema }}
