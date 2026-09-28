@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hackathons in Belgium</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v=12">
+</head>
+
+<body>
+    <header class="newsolvr-bar">
+        <h1 class="newsolvr-bar__title">Hackathons in Belgium</h1>
+    </header>
+    <main class="main">
+        {% for h in hackathons %}
+        <article class="card">
+            <p class="card__problem">{{ h.name }}</p>
+            <div class="card__badges">
+                {% if h.city %}
+                <span class="card__badge card__badge--city">{{ h.city }}</span>
+                {% endif %}
+                {% if h.date %}
+                <span class="card__badge card__badge--date">{{ h.date | event_date }}</span>
+                {% endif %}
+            </div>
+            {% if h.topic %}
+            <div class="card__badges">
+                <span class="card__badge card__badge--topic">{{ h.topic }}</span>
+            </div>
+            {% endif %}
+            {% if h.description %}
+            <p class="card__description">{{ h.description }}</p>
+            {% endif %}
+            <footer class="card__footer">
+                {% if h.url %}
+                <a class="card__button" href="{{ h.url }}" target="_blank" rel="noopener noreferrer">link to website</a>
+                {% endif %}
+            </footer>
+        </article>
+        {% else %}
+        <p class="empty">No hackathons yet.</p>
+        {% endfor %}
+    </main>
+</body>
+
+</html>

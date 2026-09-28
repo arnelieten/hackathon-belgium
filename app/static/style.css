@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Press Start 2P', cursive;
+  background: #ffffff;
+}
+
+body {
+  max-width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #333333;
+  border: 2px solid #333333;
+  box-shadow: 2px 2px 0 0 #333333;
+  border-radius: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Press Start 2P', cursive;
+  color: #333333;
+  margin: 1rem 0;
+  font-weight: 400;
+}
+
+a {
+  color: #333333;
+  text-decoration: none;
+}
+
+.newsolvr-bar {
+  background: #333333;
+  padding: 1rem 1.5rem;
+  border-radius: 0;
+  border-bottom: 2px solid #333333;
+  box-shadow: none;
+}
+
+.newsolvr-bar__title {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 400;
+  font-family: 'Press Start 2P', cursive;
+  color: #f0f0f0;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 3rem;
+  background-color: #ffffff;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: #f0f0f0;
+  border: 2px solid #333333;
+  box-shadow: 2px 2px 0 0 #333333;
+  border-radius: 0;
+  padding: 1.25rem 1.5rem;
+  min-width: 0;
+}
+
+.card__problem {
+  margin: 0 0 1rem;
+  font-size: 0.7rem;
+  line-height: 2;
+  color: #333333;
+  font-family: 'Press Start 2P', cursive;
+}
+
+.card__description {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 2px solid #333333;
+  font-size: 0.6rem;
+  line-height: 1.8;
+  color: #333333;
+  font-family: 'Press Start 2P', cursive;
+}
+
+.card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.card__badge {
+  display: inline-block;
+  padding: 0.4rem 0.65rem;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 0.55rem;
+  line-height: 1.4;
+  border: 2px solid #333333;
+  border-radius: 0;
+}
+
+.card__badge--city {
+  background: #0085ca;
+  color: #ffffff;
+}
+
+.card__badge--date {
+  background: #e30613;
+  color: #ffffff;
+}
+
+.card__badge--topic {
+  background: #ffd100;
+  color: #ffffff;
+}
+
+.card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.55rem;
+  font-family: 'Press Start 2P', cursive;
+}
+
+.card__button {
+  display: inline-block;
+  padding: 0.4rem 0.65rem;
+  color: #ffffff;
+  background: #009a44;
+  text-decoration: none;
+  font-size: 0.55rem;
+  line-height: 1.4;
+  font-family: 'Press Start 2P', cursive;
+  border: 2px solid #333333;
+  box-shadow: 2px 2px 0 0 #333333;
+  border-radius: 0;
+}
+
+.card__button:hover {
+  background-color: #00853b;
+}
+
+.card__button:active {
+  box-shadow: 1px 1px 0 0 #333333;
+  transform: translate(1px, 1px);
+}
+
+.empty {
+  grid-column: 1 / -1;
+  color: #333333;
+  font-style: normal;
+  margin: 0;
+  font-size: 0.7rem;
+  font-family: 'Press Start 2P', cursive;
+}
+
+@media (max-width: 640px) {
+  .main {
+    grid-template-columns: 1fr;
+    padding: 1.5rem 1rem;
+  }
+}

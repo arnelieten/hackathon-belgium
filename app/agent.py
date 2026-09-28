@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 import os
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from agno.models.google import GeminiInteractions
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
 from pydantic import BaseModel, Field
+
+from database import close_db, connect_to_db, save_hackathons
 
 load_dotenv()
 
@@ -20,20 +23,19 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 class HackathonEvent(BaseModel):
     name: str = Field(description="Official name of the hackathon")
     city: str = Field(description="Belgian city where it takes place")
-    date: str = Field(description="ISO date, or null if unknown")
-    duration: int = Field(description="How long the hackathon lasts")
-    url: str = Field(default=None, description="Official event URL")
-    description: str = Field(description="Short description of the event")
+    date: str = Field(description="Required ISO date (YYYY-MM-DD) of the hackathon event")
+    topic: str = Field(description="Single short topic label (e.g. AI, climate, health)")
+    url: str = Field(default=None, description="Official hackathon event URL or most relevant url for more information regarding the hackathon")
+    description: str = Field(description="Short description of the hackathon topic")
 
 
 class HackathonBrief(BaseModel):
     events: list[HackathonEvent] = Field(description="Hackathons found in Belgium")
 
 
-def load_prompt(**kwargs: object) -> str:
+def load_prompt(template: str, **kwargs: object) -> str:
     env = Environment(loader=FileSystemLoader(APP_DIR), autoescape=False)
-    template = env.get_template("prompt.jinja2")
-    return template.render(today=date.today().isoformat(), **kwargs)
+    return env.get_template(template).render(today=date.today().isoformat(), **kwargs)
 
 
 def build_research_agent() -> Agent:
@@ -46,15 +48,15 @@ def build_research_agent() -> Agent:
     )
 
 
-def build_deduplication_agent() -> Agent:
+def build_compiler_agent() -> Agent:
     return Agent(
         model=GeminiInteractions(
             id=MODEL_NAME,
             api_key=API_KEY,
         ),
-        instructions=(
-            "Deduplicate hackathon events from the research report and format them. "
-            "Merge the same event listed more than once. Do not invent events."
+        instructions=load_prompt(
+            "compiler.jinja2",
+            event_schema=json.dumps(HackathonEvent.model_json_schema(), indent=2),
         ),
         output_schema=HackathonBrief,
         markdown=False,
@@ -62,11 +64,17 @@ def build_deduplication_agent() -> Agent:
 
 
 def run() -> HackathonBrief | str:
-    research = build_research_agent().run(load_prompt())
-    response = build_deduplication_agent().run(research.content)
-    return response.content
+    research = build_research_agent().run(load_prompt("research.jinja2"))
+    response = build_compiler_agent().run(research.content)
+    content = response.content
+    if isinstance(content, HackathonBrief):
+        db = connect_to_db()
+        try:
+            save_hackathons(db, content.events)
+        finally:
+            close_db(db)
+    return content
 
 
 if __name__ == "__main__":
     result = run()
-    print(result)
